@@ -1,0 +1,5 @@
+1. users
+	a. register ok
+	b. login ok
+2. products
+	a. create products

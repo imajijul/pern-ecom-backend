@@ -1,0 +1,7 @@
+CREATE TABLE blogs(
+	id SERIAL PRIMARY KEY,
+	title VARCHAR(200),
+	description VARCHAR(250),
+	author INT NOT NULL REFERENCES users(id),
+	created_at TIMESTAMP NOT NULL DEFAULT NOW()
+)
