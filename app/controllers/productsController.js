@@ -38,3 +38,76 @@ export const productDetailsControler = async (req, res)=>{
         res.status(500).json({success: false, message: "Internal Server Error"})
     }
 }
+
+// Dynamic Product Filter
+export const productFilterControler = async (req, res)=>{
+    try{
+        let { 
+            search,
+            category_id,
+            min_price,
+            max_price,
+            color,
+            size,
+            name_sort,
+            price_sort
+        } = req.query
+
+        let fetch_query = `SELECT * FROM products WHERE 1=1`
+        let values = []
+
+        if (search) {
+            values.push(`%${search}%`)
+            fetch_query += ` AND (
+            name ILIKE $${values.length}
+            OR description ILIKE $${values.length}
+            )`
+        }
+
+        if (category_id) {
+            values.push(category_id);
+            fetch_query += ` AND category_id = $${values.length}`
+        }
+
+        if (min_price) {
+            values.push(min_price);
+            fetch_query += ` AND price >= $${values.length}`;
+        }
+
+        if (max_price) {
+            values.push(max_price);
+            fetch_query += ` AND price <= $${values.length}`;
+        }
+        let sort_query = []
+
+        // Sorting items
+        if (price_sort === "low-high") {
+            sort_query.push("price ASC")
+        } else if (price_sort === "high-low") {
+            sort_query.push("price DESC")
+        }
+
+        if (name_sort === "a-z") {
+            sort_query.push("name ASC")
+        } 
+        else if (name_sort === "z-a") {
+            sort_query.push("name DESC")
+        }
+
+        if(sort_query.length>0){
+            fetch_query+= ` ORDER BY ${sort_query.join(",")}`
+        }
+        let data = await dbconnect.query(fetch_query, values)
+
+        if(data.rows.length===0){
+            return res.status(400).json({
+                success: false,
+                message: "No Products Found"
+            })
+        }
+        res.status(200).json({success: true, message: "All products", total: data.rows.length, data: data.rows})
+    }catch(err){
+        console.error(err)
+        res.status(500).json({success: false, message: "Internal Server Error"})
+    }
+}

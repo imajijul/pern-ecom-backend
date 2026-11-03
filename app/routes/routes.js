@@ -2,7 +2,7 @@ import express from "express"
 import {loginUserControler, logoutController, registerUserController, updateUserController } from "../controllers/userController.js"
 import { authMiddleware } from "../middleware/authMiddleware.js"
 import { authorize } from "../middleware/authorize.js"
-import { createProductController, getAllProductControler, productDetailsControler } from "../controllers/productsController.js"
+import { createProductController, getAllProductControler, productDetailsControler, productFilterControler } from "../controllers/productsController.js"
 import { createWishlistControler, deleteWishlistControler, getWishlistControler } from "../controllers/wishlists.js"
 import { createCartsControler, deleteCartsControler, deleteSingleCartControler, getCartsControler } from "../controllers/cartsController.js"
 import { createInvoiceControler, getInvoiceItemsControler, getInvoiceListControler, paymentCancelControler, paymentFailControler, paymentSuccessControler } from "../controllers/invoiceController.js"
@@ -24,6 +24,7 @@ router.post("/create-product", authMiddleware, authorize("super_admin","admin"),
 // product routes
 router.get("/all-products", getAllProductControler) // all produts list
 router.get("/product-details/:id", productDetailsControler) // all produts list
+router.get("/product", productFilterControler) // all produts list
 // Prduct by category
 
 // wishlists
