@@ -227,6 +227,42 @@ export const paymentSuccessControler = async (req, res)=>{
         }
 
 
+        // Step 3: Fetch order items
+        
+        let order_id = result.rows[0].id
+        let order_fetch_query = `SELECT id, product_id, order_id, color, size, qty FROM order_items
+            WHERE user_id = $1 AND order_id = $2
+        `
+        let order_items_data = await dbconnect.query(order_fetch_query, [id, order_id])
+        
+        if(order_items_data.rows.length===0){
+            return res.status(404).json({
+                success: false,
+                message: "No Orders Item Found"
+            })
+        }
+        order_items_data.rows.forEach(async(item)=>{
+            console.log(item)
+
+            const stock_query = `
+                UPDATE products
+                SET qty = qty - $1
+                WHERE id = $2
+                AND qty >= $1
+                RETURNING id, qty
+            `
+            let stock_data = await dbconnect.query(stock_query, [item.qty, item.product_id])
+
+            if(stock_data.rows.length===0){
+            return res.status(404).json({
+                success: false,
+                message: `Insufficient stock: Product ${item.product_id}`
+            })
+        }
+        })
+
+
+        // Step 4: update order status
         let update_query = `UPDATE orders
             SET payment_status = $1,
                 updated_at = NOW()
@@ -354,7 +390,7 @@ export const paymentCancelControler = async (req, res)=>{
         });
         }
 
-        // Step 3: Update payment status
+        // Step : Update payment status
 
         let update_query = `UPDATE orders
             SET payment_status = $1,
