@@ -1,9 +1,10 @@
 import express from 'express'
 import Cors from 'cors'
 import bodyParser, { urlencoded } from 'body-parser'
-import router from './app/routes/routes.js'
 import { dbconnect } from './app/database/db.js'
 import cookieParser from 'cookie-parser'
+import userRouter from './app/routes/userRoute.js'
+import productRouter from './app/routes/productRoute.js'
 
 const app = express()
 
@@ -13,7 +14,10 @@ app.use(Cors({
 }))
 app.use(bodyParser.json({urlencoded: true}))
 app.use(cookieParser())
-app.use("/api", router)
+
+// route midleware
+app.use("/api", productRouter)
+app.use("/api/auth", userRouter)
 
 
 // await dbconnect.connect().then(()=>{

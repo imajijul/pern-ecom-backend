@@ -71,12 +71,12 @@ export const productFilterControler = async (req, res)=>{
 
         if (min_price) {
             values.push(min_price);
-            fetch_query += ` AND price >= $${values.length}`;
+            fetch_query += ` AND price >= $${values.length}`
         }
 
         if (max_price) {
             values.push(max_price);
-            fetch_query += ` AND price <= $${values.length}`;
+            fetch_query += ` AND price <= $${values.length}`
         }
         let sort_query = []
 
