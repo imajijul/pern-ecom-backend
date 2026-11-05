@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 
-export const emailSend = async (emailTo, emailText, emailSub)=>{
+export const emailSend = async (emailTo, emailSub, emailText)=>{
     
     const transporter = nodemailer.createTransport({
         host:"smtp.gmail.com",

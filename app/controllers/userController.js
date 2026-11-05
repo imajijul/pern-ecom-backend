@@ -243,11 +243,187 @@ export const logoutController = async (req, res)=>{
     }
 }
 
+
+export const changePasswordtController = async (req, res)=>{
+    try {
+        const {current_password, new_password} = req.body
+        const {id, email} = req.users
+
+        // step-1: input value check
+        if (!current_password || !new_password) {
+            return res.status(400).json({
+                success: false,
+                message: "Password is required"
+            });
+        }
+
+        let user_query = `SELECT id, email, password FROM users  
+        WHERE email = $1 AND id = $2`
+
+        // step-2: fetch user by email and id from authMidleware
+        let result = await dbconnect.query(user_query, [email, id])
+        
+        // step-3: check user data
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+        });
+}
+
+        // step-4: compare password
+        let isMatched = await bcrypt.compare(current_password, result.rows[0].password)
+        
+        if(!isMatched){
+            return res.status(400).json({
+                success: false,
+                message: "ivalid current password"
+            })
+        }
+
+        const hashedPassword = await bcrypt.hash(new_password, 12)
+
+        // step-5: update password
+        let pass_query = `
+            UPDATE users
+            SET password = $1
+            WHERE id = $2
+                AND email = $3
+            RETURNING id, email
+        `
+        const data = await dbconnect.query(pass_query, [hashedPassword, result.rows[0].id, result.rows[0].email])
+        
+        if(data.rows.length === 0){
+             return res.status(400).json({
+                success: false,
+                message: "password could't change"
+            })
+        }
+        return res
+        .status(200)
+        .json({success: true, message: "password changed"})
+       
+         
+    } catch (err) {
+        res
+        .status(500)
+        .json({success: false, message: err.message})
+    }
+}
+
+
+
 export const forgotPasswordtController = async (req, res)=>{
     try {
+        // step-1; input email
+        let {email} = req.body
+        if(!email){
+            return res.status(400).json ({
+                success: false,
+                message: "email is required"
+            })
+        }
+
+        // step-2: check user by email 
+        let find_query = `SELECT id, name, email FROM users WHERE email = $1`
+        let user_data = await dbconnect.query(find_query, [email])
         
-        return res.json({success: true, message: "password forgot success"})
+        if(user_data.rows.length === 0){
+            return res.status(400).json ({
+                success: false,
+                message: "user not found with your email address"
+            })
+        }
+
+        // step-3: reset token generate
+        const token = crypto.randomBytes(32).toString("hex")
+
+        const hashedToken = crypto
+            .createHash("sha256")
+            .update(token)
+            .digest("hex")
+        
+        // step-4: send reset link via email
+        const reset_expires = new Date(Date.now() + 15 * 60 * 1000)
+        const resetLink = `http://localhost:3000/reset-password?token=${token}`
+        
+        const emailSubject = `Reset Password`
+        const emailText = `
+            <!DOCTYPE html>
+            <html>
+                <h2>Welcome!</h2>
+                <p>Please click the link to reset yout password.</p>
+                <a href="${resetLink}">Reset</a>
+                <p>Link expires in 15 minutes.</p>
+            </html>
+            `
+        await emailSend(email, emailSubject, emailText )
+
+        // step-5: update token and expires
+        const update_query = `
+            UPDATE users
+            SET reset_password_token = $1,
+                reset_password_expires = $2
+            WHERE email = $3 AND id = $4
+            RETURNING id, email
+            `
+        await dbconnect.query(update_query, [
+            hashedToken,
+            reset_expires,
+            user_data.rows[0].email, 
+            user_data.rows[0].id
+        ]);
+
+        return res.json({success: true, message: "password reset link send to your email"})
          
+    } catch (err) {
+        res.json({success: false, message: err.message})
+    }
+}
+
+
+// reset pass  via link
+export const resetPasswordController = async (req, res)=>{
+    try {
+        const {token} = req.query
+        const {password} = req.body
+
+        // step-1: check input
+        if(!token || !password){
+            return res.status(400).json({
+                success: false,
+                message: "token and password are required"
+            })
+        }
+        const hashedPassword = await bcrypt.hash(password, 12)
+
+        const hashedToken = crypto
+            .createHash("sha256")
+            .update(token)
+            .digest("hex");
+
+        let reset_query = `
+            UPDATE users
+            SET 
+                password = $1,
+                reset_password_token = NULL,
+                reset_password_expires = NULL,
+                updated_at = NOW()
+            WHERE reset_password_token = $2
+                AND reset_password_expires > NOW()  
+            RETURNING id, email
+
+
+        `
+        let data = await dbconnect.query(reset_query, [hashedPassword, hashedToken])
+        console.log(data.rows)
+        if(data.rows.length === 0){
+            return res.status(400).json({
+                success: false,
+                message: "invalid or expired password reset link"
+            })
+        }
+        res.json({success: true, message: "password reset successfull"})
     } catch (err) {
         res.json({success: false, message: err.message})
     }
